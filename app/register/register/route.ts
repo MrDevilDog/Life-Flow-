@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       name,
       email,
       password,
+      phone,
     } = parsed;
 
     // 1. Check if user exists by email
@@ -50,13 +51,26 @@ export async function POST(req: Request) {
       return jsonError(400, "Email already registered");
     }
 
-    // 2. Create user with hashed password
+    // 2. Check if phone number already exists (if provided)
+    if (phone) {
+      const existingPhone = await db.query<any[]>(
+        "SELECT id FROM users WHERE phone = ? LIMIT 1",
+        [phone]
+      );
+
+      if (existingPhone.length > 0) {
+        console.log("Phone already exists:", phone);
+        return jsonError(400, "Phone number already registered");
+      }
+    }
+
+    // 3. Create user with hashed password
     const hashedPassword = await bcrypt.hash(password, 12);
     console.log("Password hashed successfully");
     
     const result = await db.query(
-      "INSERT INTO users (name, email, password, role, email_verified) VALUES (?, ?, ?, ?, ?)",
-      [name, email, hashedPassword, "user", true]
+      "INSERT INTO users (name, email, phone, password, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)",
+      [name, email, phone, hashedPassword, "user", true]
     );
     
     const userId = (result as any)?.insertId;
@@ -85,19 +99,20 @@ export async function POST(req: Request) {
     
     // Handle specific database errors
     if (err instanceof Error) {
-      if (err.message.includes("Unknown column 'verification_type'")) {
-        return jsonError(500, "Database schema error: Please run the migration script to update the database schema.");
-      }
-      if (err.message.includes("Duplicate entry")) {
-        if (err.message.includes("email")) {
+      // MySQL error code 23505 = duplicate key violation
+      if (err.message.includes("23505") || err.message.includes("Duplicate entry")) {
+        if (err.message.includes("email") || err.message.includes("users.email")) {
           return jsonError(400, "Email already registered");
         }
-        if (err.message.includes("phone")) {
+        if (err.message.includes("phone") || err.message.includes("users.phone") || err.message.includes("users_phone_key")) {
           return jsonError(400, "Phone number already registered");
         }
       }
       if (err.message.includes("Data too long")) {
         return jsonError(400, "One of the fields is too long. Please check your input.");
+      }
+      if (err.message.includes("Unknown column 'verification_type'")) {
+        return jsonError(500, "Database schema error: Please run the migration script to update the database schema.");
       }
     }
     
