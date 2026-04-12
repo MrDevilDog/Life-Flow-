@@ -52,9 +52,12 @@ const distances = [
 
 export function NearbyDonorFinder() {
   const [nearbyDonors, setNearbyDonors] = useState<NearbyDonor[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedBloodGroup, setSelectedBloodGroup] = useState("All")
+  const [selectedDistance, setSelectedDistance] = useState("20")
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | null>(null)
   const [bloodFilter, setBloodFilter] = useState("All")
   const [maxDistance, setMaxDistance] = useState(20)
   const [selectedRadius, setSelectedRadius] = useState("20")
@@ -65,19 +68,55 @@ export function NearbyDonorFinder() {
     const dLon = ((lon2 - lon1) * Math.PI) / 180
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2)
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c
+  }
+
+  // Get user's current location using browser geolocation
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser")
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        console.log("Got user location:", { latitude, longitude })
+        setUserLocation({ lat: latitude, lng: longitude })
+        setLocationPermission('granted')
+      },
+      (error) => {
+        console.error("Geolocation error:", error)
+        setLocationPermission('denied')
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setError("Location access denied. Please enable location services to find nearby donors.")
+            break
+          case error.POSITION_UNAVAILABLE:
+            setError("Location information is unavailable. Please try again.")
+            break
+          case error.TIMEOUT:
+            setError("Location request timed out. Please try again.")
+            break
+          default:
+            setError("An unknown error occurred while getting your location.")
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes
+      }
+    )
   }
 
   useEffect(() => {
     let mounted = true
     try {
-      if (!navigator.geolocation) return
-      navigator.geolocation.getCurrentPosition(
+      getCurrentLocation()
         (pos) => {
           if (!mounted) return
           setUserLocation({

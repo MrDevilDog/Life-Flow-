@@ -7,6 +7,7 @@ import { signToken } from "@/services/auth";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { assertEnv } from "@/lib/env";
+import { geocodeCity } from "@/lib/geocoding";
 
 export const runtime = "nodejs";
 
@@ -82,16 +83,37 @@ export async function POST(req: Request) {
 
     console.log("User created successfully:", userId);
     
-    // Always create donor record with default values if not provided
+    // Always create donor record with geocoded coordinates
     const donorBloodGroup = blood_group || 'O+';
     const donorLocation = location || 'Unknown';
+    
+    // Get coordinates for the location
+    let donorLat = 0;
+    let donorLng = 0;
+    
+    if (donorLocation && donorLocation !== 'Unknown') {
+      try {
+        console.log("Geocoding location:", donorLocation);
+        const coords = await geocodeCity(donorLocation);
+        if (coords) {
+          donorLat = coords.lat;
+          donorLng = coords.lng;
+          console.log("Geocoded coordinates:", { lat: donorLat, lng: donorLng });
+        } else {
+          console.log("Geocoding failed, using default coordinates");
+        }
+      } catch (geocodeErr) {
+        console.error("Geocoding error:", geocodeErr);
+        // Continue with default coordinates
+      }
+    }
     
     try {
       await db.query(
         "INSERT INTO donors (user_id, blood_group, location, phone, availability, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [userId, donorBloodGroup, donorLocation, phone || '', 1, 0, 0]
+        [userId, donorBloodGroup, donorLocation, phone || '', 1, donorLat, donorLng]
       );
-      console.log("Donor record created successfully for user:", userId);
+      console.log("Donor record created successfully for user:", userId, { lat: donorLat, lng: donorLng });
     } catch (donorErr) {
       console.error("Failed to create donor record:", donorErr);
       // Don't fail registration if donor creation fails

@@ -4,6 +4,7 @@ import { profileUpdateSchema } from "@/lib/validators";
 import { jsonError, handleRouteError } from "@/lib/http";
 import { requireAuthUser } from "@/services/auth";
 import { z } from "zod";
+import { geocodeCity } from "@/lib/geocoding";
 
 export const runtime = "nodejs";
 
@@ -140,6 +141,24 @@ export async function PUT(req: Request) {
 
     // Update donor profile if any donor fields are provided
     if (blood_group !== undefined || location !== undefined || availability !== undefined || lat !== undefined || lng !== undefined) {
+      // Geocode location if it's being updated
+      let geocodedLat = lat;
+      let geocodedLng = lng;
+      
+      if (location !== undefined && location !== 'Unknown' && (lat === undefined || lng === undefined)) {
+        try {
+          console.log("Geocoding updated location:", location);
+          const coords = await geocodeCity(location);
+          if (coords) {
+            geocodedLat = coords.lat;
+            geocodedLng = coords.lng;
+            console.log("Geocoded coordinates for update:", { lat: geocodedLat, lng: geocodedLng });
+          }
+        } catch (geocodeErr) {
+          console.error("Geocoding error during profile update:", geocodeErr);
+        }
+      }
+      
       if (hasDonorRecord) {
         // Update existing donor record
         const donorUpdates: string[] = [];
@@ -160,14 +179,14 @@ export async function PUT(req: Request) {
           donorValues.push(availability ? 1 : 0);
         }
 
-        if (lat !== undefined) {
+        if (geocodedLat !== undefined) {
           donorUpdates.push("lat = ?");
-          donorValues.push(lat);
+          donorValues.push(geocodedLat);
         }
 
-        if (lng !== undefined) {
+        if (geocodedLng !== undefined) {
           donorUpdates.push("lng = ?");
-          donorValues.push(lng);
+          donorValues.push(geocodedLng);
         }
 
         if (donorUpdates.length > 0) {
@@ -186,8 +205,8 @@ export async function PUT(req: Request) {
           location: location || 'Unknown',
           phone: authUser.phone || '',
           availability: availability !== undefined ? (availability ? 1 : 0) : 1,
-          lat: lat || 0,
-          lng: lng || 0
+          lat: geocodedLat || 0,
+          lng: geocodedLng || 0
         };
 
         await db.query(
