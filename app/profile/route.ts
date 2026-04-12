@@ -130,43 +130,71 @@ export async function PUT(req: Request) {
       );
     }
 
+    // Check if donor record exists
+    const existingDonor = await db.query<any[]>(
+      "SELECT id FROM donors WHERE user_id = ? LIMIT 1",
+      [authUser.id]
+    );
+
+    const hasDonorRecord = existingDonor.length > 0;
+
     // Update donor profile if any donor fields are provided
     if (blood_group !== undefined || location !== undefined || availability !== undefined || lat !== undefined || lng !== undefined) {
-      const donorUpdates: string[] = [];
-      const donorValues: any[] = [];
+      if (hasDonorRecord) {
+        // Update existing donor record
+        const donorUpdates: string[] = [];
+        const donorValues: any[] = [];
 
-      if (blood_group !== undefined) {
-        donorUpdates.push("blood_group = ?");
-        donorValues.push(blood_group);
-      }
+        if (blood_group !== undefined) {
+          donorUpdates.push("blood_group = ?");
+          donorValues.push(blood_group);
+        }
 
-      if (location !== undefined) {
-        donorUpdates.push("location = ?");
-        donorValues.push(location);
-      }
+        if (location !== undefined) {
+          donorUpdates.push("location = ?");
+          donorValues.push(location);
+        }
 
-      if (availability !== undefined) {
-        donorUpdates.push("availability = ?");
-        donorValues.push(availability ? 1 : 0);
-      }
+        if (availability !== undefined) {
+          donorUpdates.push("availability = ?");
+          donorValues.push(availability ? 1 : 0);
+        }
 
-      if (lat !== undefined) {
-        donorUpdates.push("lat = ?");
-        donorValues.push(lat);
-      }
+        if (lat !== undefined) {
+          donorUpdates.push("lat = ?");
+          donorValues.push(lat);
+        }
 
-      if (lng !== undefined) {
-        donorUpdates.push("lng = ?");
-        donorValues.push(lng);
-      }
+        if (lng !== undefined) {
+          donorUpdates.push("lng = ?");
+          donorValues.push(lng);
+        }
 
-      if (donorUpdates.length > 0) {
-        donorValues.push(authUser.id);
+        if (donorUpdates.length > 0) {
+          donorValues.push(authUser.id);
+          await db.query(
+            `UPDATE donors SET ${donorUpdates.join(", ")} WHERE user_id = ?`,
+            donorValues
+          );
+          console.log("Donor profile updated successfully");
+        }
+      } else {
+        // Create new donor record
+        const donorData = {
+          user_id: authUser.id,
+          blood_group: blood_group || 'O+',
+          location: location || 'Unknown',
+          phone: authUser.phone || '',
+          availability: availability !== undefined ? (availability ? 1 : 0) : 1,
+          lat: lat || 0,
+          lng: lng || 0
+        };
+
         await db.query(
-          `UPDATE donors SET ${donorUpdates.join(", ")} WHERE user_id = ?`,
-          donorValues
+          "INSERT INTO donors (user_id, blood_group, location, phone, availability, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [donorData.user_id, donorData.blood_group, donorData.location, donorData.phone, donorData.availability, donorData.lat, donorData.lng]
         );
-        console.log("Donor profile updated successfully");
+        console.log("Donor profile created successfully");
       }
     }
 
