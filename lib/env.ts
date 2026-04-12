@@ -74,7 +74,14 @@ export const env = {
   get SMTP_PASS() {
     return readEnv("SMTP_PASS") || readEnv("EMAIL_PASS");
   },
-  // New EMAIL_* variables for better clarity
+  // Resend API configuration (preferred for production)
+  get RESEND_API_KEY() {
+    return readEnv("RESEND_API_KEY");
+  },
+  get RESEND_FROM_EMAIL() {
+    return readEnv("RESEND_FROM_EMAIL") || "noreply@lifeflow.app";
+  },
+  // Legacy EMAIL_* variables for backward compatibility (deprecated)
   get EMAIL_USER() {
     return readEnv("EMAIL_USER") || readEnv("SMTP_USER");
   },
