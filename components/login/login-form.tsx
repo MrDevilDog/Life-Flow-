@@ -47,7 +47,7 @@ export function LoginForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emailOrPhone, password, role }),
-        credentials: "include", // Important: include cookies
+        credentials: "include", // Include cookies
       })
 
       const data = await res.json()
@@ -59,13 +59,15 @@ export function LoginForm() {
         return
       }
 
+      const token = data?.token
       const user = data?.user
-      if (!user) {
-        setError("Login failed - no user data received")
+      if (!token || !user) {
+        setError("Login failed - no token or user data received")
         return
       }
 
-      // Token is now set as HTTP-only cookie, no need to store in localStorage
+      // Store token in localStorage for Authorization headers
+      localStorage.setItem("token", token)
       setUser(user)
       if (role === "hospital") {
         router.push("/hospital/dashboard")

@@ -82,18 +82,19 @@ export async function POST(req: Request) {
 
     console.log("User created successfully:", userId);
     
-    // Create donor record if blood_group and location are provided
-    if (blood_group && location) {
-      try {
-        await db.query(
-          "INSERT INTO donors (user_id, blood_group, location, phone, availability, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [userId, blood_group, location, phone || '', 1, 0, 0]
-        );
-        console.log("Donor record created successfully for user:", userId);
-      } catch (donorErr) {
-        console.error("Failed to create donor record:", donorErr);
-        // Don't fail registration if donor creation fails
-      }
+    // Always create donor record with default values if not provided
+    const donorBloodGroup = blood_group || 'O+';
+    const donorLocation = location || 'Unknown';
+    
+    try {
+      await db.query(
+        "INSERT INTO donors (user_id, blood_group, location, phone, availability, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [userId, donorBloodGroup, donorLocation, phone || '', 1, 0, 0]
+      );
+      console.log("Donor record created successfully for user:", userId);
+    } catch (donorErr) {
+      console.error("Failed to create donor record:", donorErr);
+      // Don't fail registration if donor creation fails
     }
     
     const token = signToken({

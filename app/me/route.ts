@@ -11,7 +11,8 @@ export async function GET(req: Request) {
     const authUser = await requireAuthUser(req);
     
     const rows = await db.query<any[]>(
-      `SELECT u.name, u.email, u.created_at, d.phone, d.location, d.blood_group, d.availability
+      `SELECT u.id, u.name, u.email, u.phone, u.created_at, u.email_verified, u.phone_verified, u.verification_type,
+              d.blood_group, d.location, d.availability, d.lat, d.lng
        FROM users u
        LEFT JOIN donors d ON u.id = d.user_id
        WHERE u.id = ? LIMIT 1`,
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
       return jsonError(404, "User not found");
     }
 
-    // Create donor record if it doesn't exist and user has phone
+    // Create donor record if it doesn't exist
     if (!user.blood_group && user.phone) {
       try {
         await db.query(
@@ -33,7 +34,8 @@ export async function GET(req: Request) {
         
         // Re-fetch user data with donor record
         const updatedRows = await db.query<any[]>(
-          `SELECT u.name, u.email, u.created_at, d.phone, d.location, d.blood_group, d.availability
+          `SELECT u.id, u.name, u.email, u.phone, u.created_at, u.email_verified, u.phone_verified, u.verification_type,
+                  d.blood_group, d.location, d.availability, d.lat, d.lng
            FROM users u
            LEFT JOIN donors d ON u.id = d.user_id
            WHERE u.id = ? LIMIT 1`,
@@ -49,11 +51,24 @@ export async function GET(req: Request) {
       }
     }
 
-    if (user.availability !== null && user.availability !== undefined) {
-      user.availability = Boolean(user.availability);
-    }
+    // Return complete user profile data
+    const userProfile = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      email_verified: user.email_verified,
+      phone_verified: user.phone_verified,
+      verification_type: user.verification_type,
+      created_at: user.created_at,
+      blood_group: user.blood_group,
+      location: user.location,
+      availability: user.availability ? Boolean(user.availability) : null,
+      lat: user.lat,
+      lng: user.lng
+    };
 
-    return NextResponse.json({ user }, { status: 200 });
+    return NextResponse.json({ user: userProfile }, { status: 200 });
   } catch (err: unknown) {
     return handleRouteError(err);
   }

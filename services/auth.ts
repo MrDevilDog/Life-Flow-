@@ -81,6 +81,37 @@ export async function getAuthUser(
 ): Promise<AuthUser | null> {
   assertEnv();
 
+  // First try to get user info from middleware headers
+  const userId = req.headers.get("x-user-id");
+  const userRole = req.headers.get("x-user-role");
+  
+  if (userId && userRole) {
+    // Use middleware-verified user info
+    try {
+      const userRows = await db.query<any[]>(
+        "SELECT id, name, email, phone, email_verified, phone_verified, role, verification_type FROM users WHERE id = ? LIMIT 1",
+        [userId]
+      );
+      
+      if (userRows.length > 0) {
+        const user = userRows[0];
+        return {
+          id: Number(user.id),
+          email: user.email,
+          name: user.name,
+          phone: user.phone,
+          role: user.role as UserRole,
+          email_verified: user.email_verified,
+          phone_verified: user.phone_verified,
+          verification_type: user.verification_type,
+        };
+      }
+    } catch (error) {
+      console.error("Error fetching user from middleware data:", error);
+    }
+  }
+
+  // Fallback to token verification
   const token = getToken(req);
   if (!token) return null;
 
