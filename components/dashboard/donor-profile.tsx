@@ -126,29 +126,43 @@ export function DonorProfile() {
 
   const handleSaveProfile = async () => {
     setLoading(true)
+    setError(null)
     try {
       const t = localStorage.getItem("token")
-      const res = await fetch("/api/donor", {
+      const requestBody: any = {
+        availability: editAvailability
+      }
+      
+      // Only include fields that have values
+      if (editPhone && editPhone.trim()) {
+        requestBody.phone = editPhone.trim()
+      }
+      if (editLocation && editLocation.trim()) {
+        requestBody.location = editLocation.trim()
+      }
+      if (editBloodGroup && editBloodGroup.trim()) {
+        requestBody.blood_group = editBloodGroup.trim()
+      }
+      
+      const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
           Authorization: `Bearer ${t || ""}`
         },
-        body: JSON.stringify({
-          phone: editPhone || "N/A",
-          city: editLocation || "N/A",
-          blood_group: editBloodGroup || "N/A",
-          availability: editAvailability
-        })
+        body: JSON.stringify(requestBody)
       })
 
-      if (!res.ok) throw new Error("Failed to update profile")
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Failed to update profile")
 
       // Refresh donor state
       if (t) await refreshMe(t)
       setShowEditModal(false)
     } catch (err) {
-      alert("Error updating profile. Please try again.")
+      console.error("Profile update error:", err)
+      const errorMessage = err instanceof Error ? err.message : "Error updating profile. Please try again."
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -264,6 +278,11 @@ export function DonorProfile() {
               onCheckedChange={setEditAvailability}
             />
           </div>
+          {error && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
             <Button onClick={handleSaveProfile} disabled={loading}>{loading ? "Saving..." : "Save Profile"}</Button>

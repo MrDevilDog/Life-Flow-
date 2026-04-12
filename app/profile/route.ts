@@ -77,7 +77,18 @@ export async function PUT(req: Request) {
     const verificationType = userVerificationRows[0]?.verification_type;
     console.log("🔒 User verification type:", verificationType);
 
-    const { name, phone, location, lat, lng } = parsed;
+    const { name, phone, blood_group, location, availability, lat, lng } = parsed;
+    
+    console.log("Profile update request:", { 
+      userId: authUser.id, 
+      name, 
+      phone: phone ? `${phone.substring(0, 3)}***` : null, 
+      blood_group, 
+      location, 
+      availability, 
+      lat, 
+      lng 
+    });
 
     // Field locking logic
     if (verificationType === 'email' && phone && phone !== authUser.phone) {
@@ -119,14 +130,24 @@ export async function PUT(req: Request) {
       );
     }
 
-    // Update donor location if provided
-    if (location !== undefined || lat !== undefined || lng !== undefined) {
+    // Update donor profile if any donor fields are provided
+    if (blood_group !== undefined || location !== undefined || availability !== undefined || lat !== undefined || lng !== undefined) {
       const donorUpdates: string[] = [];
       const donorValues: any[] = [];
+
+      if (blood_group !== undefined) {
+        donorUpdates.push("blood_group = ?");
+        donorValues.push(blood_group);
+      }
 
       if (location !== undefined) {
         donorUpdates.push("location = ?");
         donorValues.push(location);
+      }
+
+      if (availability !== undefined) {
+        donorUpdates.push("availability = ?");
+        donorValues.push(availability ? 1 : 0);
       }
 
       if (lat !== undefined) {
@@ -145,6 +166,7 @@ export async function PUT(req: Request) {
           `UPDATE donors SET ${donorUpdates.join(", ")} WHERE user_id = ?`,
           donorValues
         );
+        console.log("Donor profile updated successfully");
       }
     }
 
@@ -155,6 +177,28 @@ export async function PUT(req: Request) {
 
   } catch (err: unknown) {
     console.error("Update profile error:", err);
+    
+    // Handle specific database errors
+    if (err instanceof Error) {
+      // MySQL error code 23505 = duplicate key violation
+      if (err.message.includes("23505") || err.message.includes("Duplicate entry")) {
+        if (err.message.includes("phone") || err.message.includes("users.phone") || err.message.includes("users_phone_key")) {
+          console.log("Phone number already exists:", err.message);
+          return jsonError(400, "Phone number already exists");
+        }
+        if (err.message.includes("blood_group") || err.message.includes("blood_group_type")) {
+          console.log("Invalid blood group value:", err.message);
+          return jsonError(400, "Invalid blood group. Must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-");
+        }
+      }
+      if (err.message.includes("Data too long")) {
+        return jsonError(400, "One of the fields is too long. Please check your input.");
+      }
+      if (err.message.includes("Unknown column")) {
+        return jsonError(500, "Database schema error: Please contact support.");
+      }
+    }
+    
     return handleRouteError(err);
   }
 }

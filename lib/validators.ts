@@ -107,7 +107,11 @@ export const forgotPasswordSchema = z.object({
 export const profileUpdateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   phone: z.string().min(10).max(20).optional(),
+  blood_group: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], {
+    errorMap: () => ({ message: "Invalid blood group. Must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-" })
+  }).optional(),
   location: z.string().min(1).max(255).optional(),
+  availability: z.coerce.boolean().optional(),
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
 });
