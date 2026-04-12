@@ -4,9 +4,7 @@ import { db } from "@/lib/mysql";
 import { jsonError, handleRouteError } from "@/lib/http";
 import { registerSchema } from "@/lib/validators";
 import { signToken } from "@/lib/auth";
-import { generateOTP, storeOTP, sendOTP } from "@/lib/otp";
-import { sendWelcomeEmail } from "@/lib/email";
-import { PhoneValidator } from "@/lib/phone";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { assertEnv } from "@/lib/env";
 
@@ -39,47 +37,26 @@ export async function POST(req: Request) {
       name,
       email,
       password,
-      blood_group,
-      phone,
-      city,
-      district,
-      availability,
-      lat,
-      lng,
-      verification_type // NEW: Get verification type
     } = parsed;
 
-    // Phone number is now standardized by the schema validation
-    console.log("📱 Standardized phone number:", phone);
-
-    // 1. Check if user exists by email or phone (more specific error)
-    const existingEmail = await db.query<any[]>(
+    // 1. Check if user exists by email
+    const existingUser = await db.query<any[]>(
       "SELECT id FROM users WHERE email = ? LIMIT 1",
       [email]
     );
 
-    if (existingEmail.length > 0) {
-      console.log("❌ Email already exists:", email);
+    if (existingUser.length > 0) {
+      console.log("Email already exists:", email);
       return jsonError(400, "Email already registered");
     }
 
-    const existingPhone = await db.query<any[]>(
-      "SELECT id FROM users WHERE phone = ? LIMIT 1",
-      [phone] // phone is now standardized
-    );
-
-    if (existingPhone.length > 0) {
-      console.log("❌ Phone already exists:", phone);
-      return jsonError(400, "Phone number already registered");
-    }
-
-    // 2. Create user with hashed password and verification type
+    // 2. Create user with hashed password
     const hashedPassword = await bcrypt.hash(password, 12);
-    console.log("✅ Password hashed successfully");
+    console.log("Password hashed successfully");
     
     const result = await db.query(
-      "INSERT INTO users (name, email, phone, password, role, verification_type) VALUES (?, ?, ?, ?, ?, ?)",
-      [name, email, phone, hashedPassword, "user", verification_type]
+      "INSERT INTO users (name, email, password, role, email_verified) VALUES (?, ?, ?, ?, ?)",
+      [name, email, hashedPassword, "user", true]
     );
     
     const userId = (result as any)?.insertId;
@@ -87,16 +64,8 @@ export async function POST(req: Request) {
       return jsonError(500, "Failed to create user");
     }
 
-    console.log("✅ User created successfully:", userId);
+    console.log("User created successfully:", userId);
 
-    // Because of pre-registration, the email is already verified
-    await db.query("UPDATE users SET email_verified = TRUE WHERE id = ?", [userId]);
-
-    // 4. Create donor record with location (check if donor already exists)
-    if (lat && lng) {
-      try {
-        // Check if donor already exists for this user
-        const existingDonor = await db.query<any[]>(
           "SELECT id FROM donors WHERE user_id = ? LIMIT 1",
           [userId]
         );
