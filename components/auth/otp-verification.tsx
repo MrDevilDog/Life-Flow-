@@ -98,13 +98,22 @@ export function OTPVerification({ email, phone, onVerified, onBack, onEditDetail
       })
 
       const data = await response.json()
+      console.log("Resend OTP response:", data);
 
       if (data.success) {
         setError(`OTP sent to your ${type}! Check your ${type === 'email' ? 'inbox (and spam folder)' : 'phone messages'}.`)
       } else {
-        setError(data.error || "Failed to send OTP. Please try again.")
+        // Show specific error messages from backend
+        const errorMessage = data.error || "Failed to send OTP. Please try again."
+        setError(errorMessage)
+        
+        // If it's an email configuration error, provide helpful guidance
+        if (errorMessage.includes("email configuration") || errorMessage.includes("SMTP")) {
+          setError("Email service is temporarily unavailable. Please try again later or contact support.")
+        }
       }
     } catch (error) {
+      console.error("Resend OTP error:", error)
       setError("Network error. Please check your connection and try again.")
     } finally {
       setResending(null)

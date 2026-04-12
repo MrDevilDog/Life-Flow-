@@ -17,7 +17,7 @@ function createTransporter() {
   const config: EmailConfig = {
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
-    secure: false, // true for 465, false for other ports
+    secure: env.SMTP_PORT === 465, // true for 465, false for other ports
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS
@@ -26,11 +26,25 @@ function createTransporter() {
 
   // Check if email configuration is available
   if (!config.auth.user || !config.auth.pass) {
-    console.warn("⚠️  Email configuration not found in environment variables");
-    console.warn("📝 Set SMTP_USER and SMTP_PASS in .env.local for real email sending");
-    console.warn("🔗 For Gmail, use an App Password: https://myaccount.google.com/apppasswords");
+    console.error("Email configuration not found in environment variables");
+    console.error("Missing SMTP_USER or SMTP_PASS");
+    console.error("For Gmail, use an App Password: https://myaccount.google.com/apppasswords");
+    console.error("Environment check:", {
+      NODE_ENV: env.NODE_ENV,
+      SMTP_HOST: env.SMTP_HOST,
+      SMTP_PORT: env.SMTP_PORT,
+      SMTP_USER: config.auth.user ? "***" : "MISSING",
+      SMTP_PASS: config.auth.pass ? "***" : "MISSING"
+    });
     return null;
   }
+
+  console.log("Creating email transporter with config:", {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    user: config.auth.user
+  });
 
   return nodemailer.createTransport(config);
 }
@@ -83,32 +97,44 @@ export async function sendOTPEmail(email: string, otp: string): Promise<boolean>
       text: `Your LifeFlow verification code is: ${otp}. This code will expire in 5 minutes. If you didn't request this code, please ignore this email.`
     };
 
-    console.log(`📧 Sending OTP email to: ${email}`);
-    console.log(`🔢 OTP: ${otp} (for development/testing)`);
+    console.log(`Sending OTP email to: ${email}`);
+    console.log(`OTP: ${otp} (for development/testing)`);
     
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully! Message ID: ${info.messageId}`);
+    console.log(`Email sent successfully! Message ID: ${info.messageId}`);
+    console.log(`Email response:`, info);
     
     return true;
   } catch (error) {
-    console.error("❌ Failed to send email:", error);
+    console.error("Failed to send email:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      email: email,
+      smtpHost: env.SMTP_HOST,
+      smtpPort: env.SMTP_PORT
+    });
     return false;
   }
 }
 
-// Fallback when SMTP is not configured (dev only — production must use real SMTP)
+// Fallback when SMTP is not configured (dev only - production must use real SMTP)
 async function fallbackEmailSending(email: string, otp: string): Promise<boolean> {
   if (process.env.NODE_ENV === "production") {
-    console.error(
-      "SMTP_USER / SMTP_PASS are not set — cannot send OTP email in production.",
-    );
+    console.error("PRODUCTION ERROR: SMTP_USER / SMTP_PASS are not set - cannot send OTP email in production.");
+    console.error("Please configure email settings in Vercel dashboard:");
+    console.error("- SMTP_HOST: smtp.gmail.com");
+    console.error("- SMTP_PORT: 587");
+    console.error("- SMTP_USER: your_email@gmail.com");
+    console.error("- SMTP_PASS: your_gmail_app_password");
     return false;
   }
-  console.log("📧 DEVELOPMENT MODE - Email Configuration:");
-  console.log(`📧 To: ${email}`);
-  console.log(`🔢 OTP: ${otp}`);
-  console.log(`⏰ Valid for: 5 minutes`);
-  console.log("💡 Configure SMTP_USER and SMTP_PASS for real email sending");
+  
+  console.log("DEVELOPMENT MODE - Email Configuration:");
+  console.log(`To: ${email}`);
+  console.log(`OTP: ${otp}`);
+  console.log(`Valid for: 5 minutes`);
+  console.log("Configure SMTP_USER and SMTP_PASS for real email sending");
   return true;
 }
 

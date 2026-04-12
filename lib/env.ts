@@ -147,9 +147,17 @@ export function assertEnv() {
     }
   }
 
+  // In production, validate SMTP configuration for OTP emails
+  if (env.NODE_ENV === "production") {
+    if (!readEnv("SMTP_USER") || !readEnv("SMTP_PASS")) {
+      console.error("PRODUCTION WARNING: SMTP_USER and SMTP_PASS are required for OTP emails");
+      console.error("Set these in Vercel dashboard environment variables");
+    }
+  }
+
   // Log environment status in development
   if (env.NODE_ENV === "development") {
-    console.log("✅ Environment variables loaded:", {
+    console.log("Environment variables loaded:", {
       DATABASE_URL: readEnv("DATABASE_URL") ? "***" : "not set",
       DB_HOST: env.DB_HOST,
       DB_PORT: env.DB_PORT,

@@ -29,15 +29,22 @@ export async function POST(req: Request) {
 
     const { email, type } = parsed;
 
-    // ✅ STRICT contact assignment (VERY IMPORTANT)
-    const contact = email;
+    console.log("OTP Send Request:", { email, type, body });
 
-    if (!contact) {
-      return jsonError(400, "Email is required");
+    // Email validation
+    if (!email || !email.includes('@')) {
+      return jsonError(400, "Valid email address is required");
     }
 
     if (type !== 'email') {
-      return jsonError(400, "Only email is supported");
+      return jsonError(400, "Only email OTP is supported");
+    }
+
+    // ✅ STRICT contact assignment (VERY IMPORTANT)
+    const contact = email.trim().toLowerCase();
+
+    if (!contact) {
+      return jsonError(400, "Email is required");
     }
 
     // ✅ Use email in DB lookup
@@ -52,9 +59,9 @@ export async function POST(req: Request) {
 
     const otp = generateOTP();
 
-    console.log("📝 Storing OTP for:", contact);
+    console.log("Generated OTP for:", contact);
 
-    // ✅ Store OTP
+    // Store OTP
     const stored = await storeOTP(
       contact,
       otp,
@@ -63,19 +70,25 @@ export async function POST(req: Request) {
     );
 
     if (!stored) {
+      console.error("Failed to store OTP in database");
       return jsonError(500, "Failed to store OTP");
     }
 
+    console.log("OTP stored successfully, sending email...");
+
     const sent = await sendOTP(
       '',
-      email || '',
+      email,
       otp,
       type
     );
 
     if (!sent) {
-      return jsonError(500, "Failed to send OTP");
+      console.error("Failed to send OTP email");
+      return jsonError(500, "Failed to send OTP email. Please check email configuration.");
     }
+
+    console.log("OTP sent successfully to:", email);
 
     return NextResponse.json({
       success: true,
