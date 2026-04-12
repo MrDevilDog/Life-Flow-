@@ -14,17 +14,24 @@ export async function POST(req: Request) {
     // Validate environment variables
     assertEnv();
     
+    // Log DATABASE_URL for debugging (remove in production)
+    console.log("DATABASE_URL check:", process.env.DATABASE_URL ? "SET" : "NOT SET");
+    console.log("DB connection test - attempting to connect...");
+    
     const body = await req.json();
-    console.log("🔍 Login request body:", { 
-      ...body, 
-      password: "***" // Hide password in logs
+    console.log("=== LOGIN DEBUG START ===");
+    console.log("Incoming request body:", { 
+      emailOrPhone: body.emailOrPhone,
+      password: "***", // Hide password in logs
+      role: body.role
     });
     
     let parsed;
     try {
       parsed = loginSchema.parse(body);
+      console.log("Validation: PASSED");
     } catch (validationErr) {
-      console.error("❌ Login validation error:", validationErr);
+      console.error("Validation: FAILED", validationErr);
       if (validationErr instanceof z.ZodError) {
         return jsonError(400, validationErr.errors.map(e => e.message).join(", "));
       }
@@ -33,138 +40,93 @@ export async function POST(req: Request) {
 
     const { emailOrPhone, password, role } = parsed;
     
-    // Detect if input is email or phone
-    const isEmail = emailOrPhone.includes('@');
-    const email = isEmail ? emailOrPhone : null;
-    const phone = !isEmail ? emailOrPhone : null;
+    // Convert email to lowercase for case-insensitive comparison
+    const normalizedInput = emailOrPhone.toLowerCase().trim();
+    console.log("Normalized input:", normalizedInput);
     
-    console.log("🔑 Attempting login for:", { 
-      input: emailOrPhone, 
-      isEmail, 
-      email, 
-      phone, 
-      role 
-    });
-
-    if (role === "hospital") {
-      console.log("🏥 Hospital login attempt");
-      // Hospitals can only login with email
-      if (!isEmail) {
-        console.log("❌ Hospital must use email for login");
-        return jsonError(400, "Hospital accounts must use email for login");
-      }
-      
-      const rows = await db.query<any[]>(
-        "SELECT id, name, email, password FROM hospitals WHERE email = ? LIMIT 1",
-        [email]
-      );
-      const hospital = rows[0];
-
-      if (!hospital) {
-        console.log("Hospital not found:", email);
-        return jsonError(404, "Hospital not found or role mismatch");
-      }
-
-      // Safety check: Ensure password exists
-      if (!hospital.password) {
-        console.log("Hospital password is missing from database");
-        return jsonError(500, "Invalid credentials - password not found");
-      }
-
-      console.log("Comparing passwords for hospital:", hospital.id);
-      const passwordOk = await bcrypt.compare(password, hospital.password);
-      console.log("Password comparison result:", passwordOk ? "SUCCESS" : "FAILED");
-      
-      if (!passwordOk) {
-        console.log("Hospital password incorrect");
-        return jsonError(401, "Incorrect password");
-      }
-
-      console.log("✅ Hospital login successful:", hospital.id);
-      const token = signToken({
-        id: Number(hospital.id),
-        role: "hospital",
-      });
-
-      const response = NextResponse.json(
-        {
-          success: true,
-          user: {
-            id: Number(hospital.id),
-            name: hospital.name,
-            email: hospital.email,
-            role: "hospital",
-          },
-        },
-        { status: 200 }
-      );
-
-      // Set JWT cookie with proper security settings
-      response.cookies.set("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      });
-
-      return response;
-    } 
+    // Enhanced query to support both email and phone with OR condition
+    const query = `
+      SELECT id, name, email, phone, password, email_verified, phone_verified, role, verification_type 
+      FROM users 
+      WHERE LOWER(email) = $1 OR phone = $2 
+      LIMIT 1
+    `;
     
-    // role === "donor"
-    console.log("👤 Donor login attempt");
+    console.log("Executing query:", query);
+    console.log("Query parameters:", [normalizedInput, normalizedInput]);
     
-    // Support both email and phone login for donors
-    let query, queryParams;
-    if (isEmail) {
-      query = "SELECT id, name, email, phone, password, email_verified, phone_verified, role, verification_type FROM users WHERE email = ? LIMIT 1";
-      queryParams = [email];
-    } else {
-      query = "SELECT id, name, email, phone, password, email_verified, phone_verified, role, verification_type FROM users WHERE phone = ? LIMIT 1";
-      queryParams = [phone];
-    }
+    const rows = await db.query<any[]>(query, [normalizedInput, normalizedInput]);
+    console.log("Query result rows:", rows.length);
     
-    const rows = await db.query<any[]>(query, queryParams);
     const user = rows[0];
     
-    // Handle missing columns gracefully
-    if (user) {
-      // Add default values if columns don't exist
-      user.email_verified = user.email_verified !== undefined ? user.email_verified : false;
-      user.phone_verified = user.phone_verified !== undefined ? user.phone_verified : false;
-      user.verification_type = user.verification_type !== undefined ? user.verification_type : 'email';
+    if (!user) {
+      console.log("ERROR: User not found in database");
+      console.log("=== LOGIN DEBUG END ===");
+      return jsonError(404, "User not found. Please check your email/phone and try again.");
     }
 
-    if (!user) {
-      console.log("User not found:", isEmail ? email : phone);
-      return jsonError(404, "User not found or role mismatch");
-    }
+    console.log("User found:", {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      hasPassword: !!user.password,
+      passwordHashStart: user.password ? user.password.substring(0, 10) : "N/A"
+    });
+
+    // Handle missing columns gracefully
+    user.email_verified = user.email_verified !== undefined ? user.email_verified : false;
+    user.phone_verified = user.phone_verified !== undefined ? user.phone_verified : false;
+    user.verification_type = user.verification_type !== undefined ? user.verification_type : 'email';
 
     // Safety check: Ensure password exists
     if (!user.password) {
-      console.log("User password is missing from database");
-      return jsonError(500, "Invalid credentials - password not found");
+      console.log("ERROR: User password is missing from database");
+      console.log("=== LOGIN DEBUG END ===");
+      return jsonError(500, "Invalid credentials - password not found in database");
     }
 
-    console.log("Comparing passwords for user:", user.id);
+    // Verify password hash format
+    if (!user.password.startsWith('$2a$') && !user.password.startsWith('$2b$')) {
+      console.log("ERROR: Invalid password hash format");
+      console.log("Password hash starts with:", user.password.substring(0, 10));
+      console.log("=== LOGIN DEBUG END ===");
+      return jsonError(500, "Invalid password format in database");
+    }
+
+    console.log("Password hash format: VALID");
+    console.log("Starting bcrypt comparison...");
+    
     const passwordOk = await bcrypt.compare(password, user.password);
-    console.log("Password comparison result:", passwordOk ? "SUCCESS" : "FAILED");
+    console.log("bcrypt comparison result:", passwordOk ? "SUCCESS" : "FAILED");
     
     if (!passwordOk) {
-      console.log("User password incorrect");
-      return jsonError(401, "Incorrect password");
+      console.log("ERROR: Password comparison failed");
+      console.log("=== LOGIN DEBUG END ===");
+      return jsonError(401, "Incorrect password. Please try again.");
     }
 
-    console.log("✅ User login successful:", user.id);
+    console.log("SUCCESS: User authenticated successfully");
+    console.log("User details:", {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    });
 
     const token = signToken({
       id: Number(user.id),
       role: user.role,
     });
 
+    console.log("JWT token generated successfully");
+
     const response = NextResponse.json(
       {
         success: true,
+        message: "Login successful",
         user: {
           id: Number(user.id),
           name: user.name,
@@ -172,7 +134,7 @@ export async function POST(req: Request) {
           phone: user.phone,
           email_verified: user.email_verified,
           phone_verified: user.phone_verified,
-          verification_type: user.verification_type, // NEW: Include verification type
+          verification_type: user.verification_type,
           role: user.role,
         },
       },
@@ -182,15 +144,34 @@ export async function POST(req: Request) {
     // Set JWT cookie with proper security settings
     response.cookies.set("token", token, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "none",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
+    console.log("Cookie set successfully");
+    console.log("=== LOGIN DEBUG END ===");
+
     return response;
+    
   } catch (err: unknown) {
-    console.error("❌ Login error:", err);
+    console.error("=== LOGIN ERROR ===");
+    console.error("Error type:", typeof err);
+    console.error("Error message:", err instanceof Error ? err.message : String(err));
+    console.error("Stack trace:", err instanceof Error ? err.stack : "No stack trace");
+    console.error("=== LOGIN ERROR END ===");
+    
+    // Handle specific database errors
+    if (err instanceof Error) {
+      if (err.message.includes("connection")) {
+        return jsonError(500, "Database connection error. Please try again later.");
+      }
+      if (err.message.includes("timeout")) {
+        return jsonError(500, "Database timeout. Please try again later.");
+      }
+    }
+    
     return handleRouteError(err);
   }
 }
