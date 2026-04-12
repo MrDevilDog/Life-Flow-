@@ -12,15 +12,26 @@ export const runtime = "nodejs";
 
 
 export async function POST(req: Request) {
+  let requestEmail = ''; // Declare outside try block for use in catch
+  
   try {
     assertEnv();
 
     const body = await req.json();
 
+    // Log incoming request for debugging
+    console.log("Incoming OTP send request:", {
+      method: req.method,
+      contentType: req.headers.get("content-type"),
+      body: body
+    });
+
     let parsed;
     try {
       parsed = otpSendSchema.parse(body);
+      requestEmail = parsed.email || '';
     } catch (validationErr) {
+      console.error("OTP validation error:", validationErr);
       if (validationErr instanceof z.ZodError) {
         return jsonError(400, validationErr.errors.map(e => e.message).join(", "));
       }
@@ -29,7 +40,7 @@ export async function POST(req: Request) {
 
     const { email, type } = parsed;
 
-    console.log("OTP Send Request:", { email, type, body });
+    console.log("Validated OTP request:", { email, type });
 
     // Email validation
     if (!email || !email.includes('@')) {
@@ -84,8 +95,9 @@ export async function POST(req: Request) {
     );
 
     if (!sent) {
-      console.error("Failed to send OTP email");
-      return jsonError(500, "Failed to send OTP email. Please check email configuration.");
+      console.error("Failed to send OTP email to:", email);
+      console.error("Check email configuration: EMAIL_USER/EMAIL_PASS environment variables");
+      return jsonError(500, "Failed to send OTP email. Please check email configuration or try again later.");
     }
 
     console.log("OTP sent successfully to:", email);
@@ -97,7 +109,16 @@ export async function POST(req: Request) {
     });
 
   } catch (err) {
-    return handleRouteError(err);
+    console.error("Unexpected error in OTP send route:", err);
+    console.error("Error details:", {
+      message: err instanceof Error ? err.message : "Unknown error",
+      stack: err instanceof Error ? err.stack : undefined,
+      email: requestEmail || 'unknown'
+    });
+    
+    // Return specific error message for production debugging
+    const errorMessage = err instanceof Error ? err.message : "Internal server error";
+    return jsonError(500, `Failed to send OTP: ${errorMessage}`);
   }
 }
 

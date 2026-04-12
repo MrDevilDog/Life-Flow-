@@ -105,11 +105,16 @@ export function OTPVerification({ email, phone, onVerified, onBack, onEditDetail
       } else {
         // Show specific error messages from backend
         const errorMessage = data.error || "Failed to send OTP. Please try again."
-        setError(errorMessage)
         
         // If it's an email configuration error, provide helpful guidance
-        if (errorMessage.includes("email configuration") || errorMessage.includes("SMTP")) {
+        if (errorMessage.includes("email configuration") || 
+            errorMessage.includes("SMTP") || 
+            errorMessage.includes("EMAIL_USER") || 
+            errorMessage.includes("EMAIL_PASS")) {
           setError("Email service is temporarily unavailable. Please try again later or contact support.")
+        } else {
+          // Show the actual backend error message for other issues
+          setError(errorMessage)
         }
       }
     } catch (error) {

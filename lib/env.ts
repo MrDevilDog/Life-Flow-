@@ -61,18 +61,25 @@ export const env = {
   get NODE_ENV() {
     return readEnv("NODE_ENV") || "development";
   },
-  // Email configuration
+  // Email configuration - Support both new (EMAIL_*) and legacy (SMTP_*) variables
   get SMTP_HOST() {
-    return readEnv("SMTP_HOST") || "smtp.gmail.com";
+    return readEnv("SMTP_HOST") || readEnv("EMAIL_HOST") || "smtp.gmail.com";
   },
   get SMTP_PORT() {
-    return readEnvNumber("SMTP_PORT", 587);
+    return readEnvNumber("SMTP_PORT", readEnvNumber("EMAIL_PORT", 587));
   },
   get SMTP_USER() {
-    return readEnv("SMTP_USER");
+    return readEnv("SMTP_USER") || readEnv("EMAIL_USER");
   },
   get SMTP_PASS() {
-    return readEnv("SMTP_PASS");
+    return readEnv("SMTP_PASS") || readEnv("EMAIL_PASS");
+  },
+  // New EMAIL_* variables for better clarity
+  get EMAIL_USER() {
+    return readEnv("EMAIL_USER") || readEnv("SMTP_USER");
+  },
+  get EMAIL_PASS() {
+    return readEnv("EMAIL_PASS") || readEnv("SMTP_PASS");
   },
   // SMS configuration (optional)
   get SMS_API_KEY() {
