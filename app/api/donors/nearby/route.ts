@@ -122,9 +122,9 @@ export async function GET(req: Request) {
           return {
             id: donor.id,
             name: donor.name || "Unknown",
-            blood_group: donor.blood_group || "N/A",
-            location: donor.location || "N/A",
-            phone: donor.phone || "N/A",
+            blood_group: donor.blood_group || null,
+            location: donor.location || null,
+            phone: donor.phone || null,
             availability: Boolean(donor.availability),
             lat: donorLat,
             lng: donorLng,

@@ -135,20 +135,6 @@ export async function POST(req: Request) {
 
     console.log("✅ User login successful:", user.id);
 
-    // Auto create donor if not exists (with verification check)
-    const existingDonorRows = await db.query<any[]>(
-      "SELECT id FROM donors WHERE user_id = ? LIMIT 1",
-      [user.id]
-    );
-
-    if (existingDonorRows.length === 0) {
-      console.log("ℹ️ Creating default donor record for user:", user.id);
-      await db.query(
-        "INSERT INTO donors (user_id, blood_group, phone, location, availability, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [user.id, "N/A", user.phone || "N/A", "N/A", 1, 0, 0]
-      );
-    }
-
     const token = signToken({
       id: Number(user.id),
       role: user.role,

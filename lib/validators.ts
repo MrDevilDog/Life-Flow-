@@ -6,7 +6,9 @@ export const registerSchema = z.object({
   email: z.string().email("Invalid email address").max(255),
   phone: phoneSchema, // Uses standardization and validation
   password: z.string().min(6, "Password must be at least 6 characters").max(255),
-  blood_group: z.string().min(1, "Blood group is required"),
+  blood_group: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], {
+  errorMap: () => ({ message: "Invalid blood group. Must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-" })
+  }),
   city: z.string().min(1, "City is required"),
   district: z.string().optional(), // Optional district field
   age: z.coerce.number().int().min(18).max(100).optional(),

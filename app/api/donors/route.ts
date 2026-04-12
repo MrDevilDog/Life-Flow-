@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { handleRouteError } from "@/lib/http";
-import { requireAuthUser } from "@/services/auth";
+import { getAuthUser, requireAuthUser } from "@/services/auth";
 
 export const runtime = "nodejs";
 
@@ -119,11 +119,11 @@ export async function GET(req: Request) {
         return {
           id: donor.id,
           name: donor.name || "Unknown",
-          blood_group: donor.blood_group || "N/A",
-          location: donor.location || "N/A",
+          blood_group: donor.blood_group || null,
+          location: donor.location || null,
           city: donor.city || null,
           district: donor.district || null,
-          phone: donor.phone || "N/A",
+          phone: donor.phone || null,
           availability: Boolean(donor.availability),
           lat: donor.lat ? parseFloat(donor.lat) : null,
           lng: donor.lng ? parseFloat(donor.lng) : null,
@@ -134,8 +134,8 @@ export async function GET(req: Request) {
         return {
           id: donor.id,
           name: donor.masked_name || "*****",
-          blood_group: donor.blood_group || "N/A",
-          location: donor.location || "N/A",
+          blood_group: donor.blood_group || null,
+          location: donor.location || null,
           city: donor.city || null,
           district: donor.district || null,
           availability: Boolean(donor.availability),
