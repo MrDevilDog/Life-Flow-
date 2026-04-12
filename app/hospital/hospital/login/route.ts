@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { handleRouteError } from "@/lib/http";
 import { loginSchema } from "@/lib/validators";
-import { signToken } from "@/lib/auth";
+import { signToken } from "@/services/auth";
 
 export const runtime = "nodejs";
 

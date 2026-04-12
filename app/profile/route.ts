@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { profileUpdateSchema } from "@/lib/validators";
 import { jsonError, handleRouteError } from "@/lib/http";
-import { requireAuthUser } from "@/lib/auth";
+import { requireAuthUser } from "@/services/auth";
 import { z } from "zod";
 
 export const runtime = "nodejs";

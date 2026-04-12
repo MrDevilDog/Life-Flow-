@@ -1,2 +1,2 @@
-export { getAuthUser, requireAuthUser, type AuthUser, type UserRole } from "@/lib/auth";
-
+import { verifyToken } from "@/services/auth";
+export { getAuthUser, requireAuthUser, type AuthUser, type UserRole } from "@/services/auth";

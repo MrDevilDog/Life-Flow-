@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
-import { requireAuthUser } from "@/lib/auth"; // Will work for hospital if we use the same verify flow, actually need to make sure auth works
+import { requireAuthUser } from "@/services/auth"; // Will work for hospital if we use the same verify flow, actually need to make sure auth works
 import { handleRouteError, jsonError } from "@/lib/http";
 import { z } from "zod";
 

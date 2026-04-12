@@ -119,3 +119,19 @@ export async function requireAuthUser(
 
   return user;
 }
+
+// Verify JWT token (for middleware)
+export function verifyToken(token: string): JwtPayload | null {
+  try {
+    return jwt.verify(
+      token,
+      env.JWT_SECRET as jwt.Secret,
+      {
+        issuer: env.JWT_ISSUER,
+      }
+    ) as JwtPayload;
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return null;
+  }
+}

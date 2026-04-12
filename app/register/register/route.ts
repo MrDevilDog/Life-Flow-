@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { jsonError, handleRouteError } from "@/lib/http";
 import { registerSchema } from "@/lib/validators";
-import { signToken } from "@/lib/auth";
+import { signToken } from "@/services/auth";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { assertEnv } from "@/lib/env";
@@ -65,32 +65,6 @@ export async function POST(req: Request) {
     }
 
     console.log("User created successfully:", userId);
-
-          "SELECT id FROM donors WHERE user_id = ? LIMIT 1",
-          [userId]
-        );
-
-        if (existingDonor.length === 0) {
-          await db.query(
-            "INSERT INTO donors (user_id, blood_group, phone, location, city, district, availability, lat, lng) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [userId, blood_group, phone, city, city, district || null, availability ? 1 : 0, lat, lng]
-          );
-          console.log("✅ Donor record created for user:", userId);
-        } else {
-          console.log("ℹ️ Donor record already exists for user:", userId);
-        }
-      } catch (err: any) {
-        console.error("❌ Failed to create donor record:", err);
-        // Don't fail registration, but log the error
-      }
-    }
-
-    console.log("✅ Registration completed for user:", userId);
-    
-    // Send welcome email (async, don't wait for it)
-    sendWelcomeEmail(email, name).catch(err => {
-      console.log("⚠️  Welcome email failed (non-critical):", err);
-    });
     
     const token = signToken({
       id: Number(userId),

@@ -1,6 +1,7 @@
 import { db } from "@/lib/mysql";
 import { donorUpsertSchema, donorUpdateSchema } from "@/lib/validators";
-import { getAuthUser, requireAuthUser } from "@/lib/auth";
+import { getAuthUser } from "@/services/auth";
+import { requireAuthUser } from "@/services/auth";
 import { handleRouteError, jsonError } from "@/lib/http";
 import { NextResponse } from "next/server";
 import { geocodeCity } from "@/lib/geocoding";

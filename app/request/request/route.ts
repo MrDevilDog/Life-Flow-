@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { requestCreateSchema } from "@/lib/validators";
 import { jsonError, handleRouteError } from "@/lib/http";
-import { requireAuthUser } from "@/lib/auth";
+import { requireAuthUser } from "@/services/auth";
 import { calculateDistance } from "@/lib/geocoding";
 
 export const runtime = "nodejs";

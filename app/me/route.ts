@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAuthUser } from "@/lib/auth";
+import { getAuthUser } from "@/services/auth";
 import { handleRouteError, jsonError } from "@/lib/http";
 import { db } from "@/lib/mysql";
 

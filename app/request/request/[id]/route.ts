@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/lib/mysql";
-import { requireAuthUser } from "@/lib/auth";
+import { requireAuthUser } from "@/services/auth";
 import { handleRouteError, jsonError } from "@/lib/http";
 import { requestStatusPatchSchema } from "@/lib/validators";
 

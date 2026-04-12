@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server"
-import { getAuthUser } from "@/lib/auth"
+import { verifyToken } from "@/services/auth";
 
 export const runtime = "nodejs"
 
 export async function GET(req: Request) {
   try {
-    const user = await getAuthUser(req)
+    // Extract token from Authorization header
+    const auth = req.headers.get("authorization") || req.headers.get("Authorization");
+    if (!auth || !auth.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { success: false, error: "No token provided" },
+        { status: 401 }
+      );
+    }
+    
+    const token = auth.replace("Bearer ", "");
+    const user = verifyToken(token)
 
     if (!user) {
       return NextResponse.json(

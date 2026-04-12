@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { jsonError, handleRouteError } from "@/lib/http";
 import { loginSchema } from "@/lib/validators";
-import { signToken } from "@/lib/auth";
+import { signToken } from "@/services/auth";
 import { assertEnv } from "@/lib/env";
 import { z } from "zod";
 

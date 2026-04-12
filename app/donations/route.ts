@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/mysql";
-import { requireAuthUser } from "@/lib/auth";
+import { requireAuthUser } from "@/services/auth";
 import { handleRouteError } from "@/lib/http";
 import { assertEnv } from "@/lib/env";
 

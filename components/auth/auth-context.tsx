@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
-import type { AuthUser } from "@/lib/auth"
+import { getAuthUser, AuthUser } from "@/services/auth";
 
 type AuthContextValue = {
   user: AuthUser | null

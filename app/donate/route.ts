@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { jsonError, handleRouteError } from "@/lib/http";
-import { requireAuthUser } from "@/lib/auth";
+import { requireAuthUser } from "@/services/auth";
 import { assertEnv } from "@/lib/env";
 
 export const runtime = "nodejs";

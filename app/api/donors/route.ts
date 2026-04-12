@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/mysql";
 import { handleRouteError } from "@/lib/http";
-import { getAuthUser } from "@/lib/auth";
+import { requireAuthUser } from "@/services/auth";
 
 export const runtime = "nodejs";
 
