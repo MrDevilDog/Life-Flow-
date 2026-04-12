@@ -44,18 +44,18 @@ export async function POST(req: Request) {
     const normalizedInput = emailOrPhone.toLowerCase().trim();
     console.log("Normalized input:", normalizedInput);
     
-    // Enhanced query to support both email and phone with OR condition
+    // Enhanced query to support both email and phone with single parameter
     const query = `
       SELECT id, name, email, phone, password, email_verified, phone_verified, role, verification_type 
       FROM users 
-      WHERE LOWER(email) = $1 OR phone = $2 
+      WHERE LOWER(email) = $1 OR phone = $1 
       LIMIT 1
     `;
     
     console.log("Executing query:", query);
-    console.log("Query parameters:", [normalizedInput, normalizedInput]);
+    console.log("Query parameters:", [normalizedInput]);
     
-    const rows = await db.query<any[]>(query, [normalizedInput, normalizedInput]);
+    const rows = await db.query<any[]>(query, [normalizedInput]);
     console.log("Query result rows:", rows.length);
     
     const user = rows[0];
