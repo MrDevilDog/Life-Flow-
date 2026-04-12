@@ -20,7 +20,7 @@ interface InventoryItem {
 
 export default function HospitalDashboard() {
   const router = useRouter()
-  const { user, setUser, loading } = useAuth()
+  const { user, setUser, loading, logout } = useAuth()
   const [inventory, setInventory] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
 
@@ -39,6 +39,7 @@ export default function HospitalDashboard() {
   async function fetchInventory() {
     try {
       const res = await fetch("/api/hospital/inventory", {
+        credentials: "include",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -61,6 +62,7 @@ export default function HospitalDashboard() {
     try {
       const res = await fetch("/api/hospital/inventory", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -78,10 +80,10 @@ export default function HospitalDashboard() {
     }
   }
 
-  function handleLogout() {
-    localStorage.removeItem("token")
-    setUser(null)
-    router.push("/")
+  async function handleLogout() {
+    await logout()
+    router.push("/login")
+    router.refresh()
   }
 
   if (loading || !user) return <div className="p-8">Loading...</div>

@@ -20,10 +20,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY)
-    setToken(null)
-    setUser(null)
+  const logout = useCallback(async () => {
+    try {
+      // Call logout API to clear server-side cookie
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Logout API error:", error);
+    } finally {
+      // Always clear client-side state
+      localStorage.removeItem(TOKEN_KEY)
+      setToken(null)
+      setUser(null)
+    }
   }, [])
 
   const setUserSynced = useCallback(
@@ -52,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setToken(t)
         const res = await fetch("/api/me", {
+          credentials: "include",
           headers: {
             Authorization: `Bearer ${t}`,
           },

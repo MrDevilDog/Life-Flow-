@@ -84,9 +84,10 @@ export function Navbar() {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => {
-                  logout()
-                  router.push("/")
+                onClick={async () => {
+                  await logout()
+                  router.push("/login")
+                  router.refresh()
                 }}
               >
                 Logout
@@ -165,10 +166,11 @@ export function Navbar() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        logout()
+                      onClick={async () => {
+                        await logout()
                         setOpen(false)
-                        router.push("/")
+                        router.push("/login")
+                        router.refresh()
                       }}
                     >
                       Logout

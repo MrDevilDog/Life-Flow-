@@ -8,8 +8,17 @@ import { QuickActions } from "@/components/dashboard/quick-actions"
 import { NearbyDonorsMap } from "@/components/dashboard/nearby-donors-map"
 import { UserProfile } from "@/components/dashboard/user-profile"
 import { DonationEligibility } from "@/components/dashboard/donation-eligibility"
+import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Check for authentication token
+  const cookieStore = await cookies()
+  const token = cookieStore.get("token")
+  
+  if (!token) {
+    redirect("/login")
+  }
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />

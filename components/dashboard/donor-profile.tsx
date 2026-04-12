@@ -45,7 +45,10 @@ export function DonorProfile() {
   // Fetch updated data wrapper function
   async function refreshMe(token: string) {
     try {
-      const res = await fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch("/api/me", { 
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` } 
+      })
       if (!res.ok) return
       const data = await res.json()
       setDonor(data.user)
@@ -153,6 +156,7 @@ export function DonorProfile() {
       
       const res = await fetch("/api/profile", {
         method: "PUT",
+        credentials: "include",
         headers: { 
           "Content-Type": "application/json",
           Authorization: `Bearer ${t || ""}`

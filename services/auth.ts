@@ -43,7 +43,7 @@ export function signToken(payload: TokenPayload): string {
   );
 }
 
-// 🔑 Extract Bearer token
+// 🔑 Extract Bearer token from header
 export function getBearerToken(req: Request): string | null {
   const auth =
     req.headers.get("authorization") ??
@@ -55,13 +55,33 @@ export function getBearerToken(req: Request): string | null {
   return match ? match[1] : null;
 }
 
+// 🍪 Extract token from cookie
+export function getCookieToken(req: Request): string | null {
+  // For Next.js API routes, we need to parse cookies manually
+  const cookieHeader = req.headers.get("cookie");
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(";").reduce((acc, cookie) => {
+    const [name, value] = cookie.trim().split("=");
+    acc[name] = value;
+    return acc;
+  }, {} as Record<string, string>);
+
+  return cookies.token || null;
+}
+
+// 🔑 Get token from both header and cookie (cookie takes priority)
+export function getToken(req: Request): string | null {
+  return getCookieToken(req) || getBearerToken(req);
+}
+
 // 👤 Get current user
 export async function getAuthUser(
   req: Request
 ): Promise<AuthUser | null> {
   assertEnv();
 
-  const token = getBearerToken(req);
+  const token = getToken(req);
   if (!token) return null;
 
   try {

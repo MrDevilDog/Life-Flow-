@@ -77,10 +77,9 @@ export async function POST(req: Request) {
         role: "hospital",
       });
 
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: true,
-          token,
           user: {
             id: Number(hospital.id),
             name: hospital.name,
@@ -90,6 +89,17 @@ export async function POST(req: Request) {
         },
         { status: 200 }
       );
+
+      // Set JWT cookie with proper security settings
+      response.cookies.set("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      });
+
+      return response;
     } 
     
     // role === "donor"
@@ -140,10 +150,9 @@ export async function POST(req: Request) {
       role: user.role,
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
-        token,
         user: {
           id: Number(user.id),
           name: user.name,
@@ -157,6 +166,17 @@ export async function POST(req: Request) {
       },
       { status: 200 }
     );
+
+    // Set JWT cookie with proper security settings
+    response.cookies.set("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return response;
   } catch (err: unknown) {
     console.error("❌ Login error:", err);
     return handleRouteError(err);
