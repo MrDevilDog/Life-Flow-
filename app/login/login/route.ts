@@ -55,19 +55,28 @@ export async function POST(req: Request) {
       }
       
       const rows = await db.query<any[]>(
-        "SELECT id, name, email FROM hospitals WHERE email = ? LIMIT 1",
+        "SELECT id, name, email, password FROM hospitals WHERE email = ? LIMIT 1",
         [email]
       );
       const hospital = rows[0];
 
       if (!hospital) {
-        console.log("❌ Hospital not found:", email);
+        console.log("Hospital not found:", email);
         return jsonError(404, "Hospital not found or role mismatch");
       }
 
+      // Safety check: Ensure password exists
+      if (!hospital.password) {
+        console.log("Hospital password is missing from database");
+        return jsonError(500, "Invalid credentials - password not found");
+      }
+
+      console.log("Comparing passwords for hospital:", hospital.id);
       const passwordOk = await bcrypt.compare(password, hospital.password);
+      console.log("Password comparison result:", passwordOk ? "SUCCESS" : "FAILED");
+      
       if (!passwordOk) {
-        console.log("❌ Hospital password incorrect");
+        console.log("Hospital password incorrect");
         return jsonError(401, "Incorrect password");
       }
 
@@ -127,19 +136,22 @@ export async function POST(req: Request) {
     }
 
     if (!user) {
-      console.log("❌ User not found:", isEmail ? email : phone);
+      console.log("User not found:", isEmail ? email : phone);
       return jsonError(404, "User not found or role mismatch");
     }
 
     // Safety check: Ensure password exists
     if (!user.password) {
-      console.log("❌ User password is missing from database");
+      console.log("User password is missing from database");
       return jsonError(500, "Invalid credentials - password not found");
     }
 
+    console.log("Comparing passwords for user:", user.id);
     const passwordOk = await bcrypt.compare(password, user.password);
+    console.log("Password comparison result:", passwordOk ? "SUCCESS" : "FAILED");
+    
     if (!passwordOk) {
-      console.log("❌ User password incorrect");
+      console.log("User password incorrect");
       return jsonError(401, "Incorrect password");
     }
 
