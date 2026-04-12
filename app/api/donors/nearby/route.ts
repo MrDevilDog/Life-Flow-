@@ -88,10 +88,21 @@ export async function GET(req: Request) {
       queryParams.push(bloodGroup);
     }
 
-    console.log("📋 Executing query:", query, queryParams);
+    console.log("📋 Executing query:", query);
+    console.log("📋 Query parameters:", queryParams);
 
     const rows = await db.query<any[]>(query);
     console.log(`✅ Found ${rows.length} donors with valid coordinates`);
+    
+    // Log first few donors for debugging
+    if (rows.length > 0) {
+      console.log("📋 Sample donors:");
+      rows.slice(0, 3).forEach((donor, index) => {
+        console.log(`  ${index + 1}. ID: ${donor.id}, Name: ${donor.name}, Location: ${donor.location}, Lat: ${donor.lat}, Lng: ${donor.lng}, Available: ${donor.availability}`);
+      });
+    } else {
+      console.log("❌ No donors found with valid coordinates");
+    }
 
     // Filter by distance safely
     const nearbyDonors = rows
