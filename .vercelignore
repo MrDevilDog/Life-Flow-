@@ -1,0 +1,6 @@
+# Keep secrets and local-only env files off Vercel uploads.
+.env
+.env.local
+.env.vercel
+.env.development.local
+.env.production.local
