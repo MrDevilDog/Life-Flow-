@@ -57,7 +57,6 @@ export function NearbyDonorFinder() {
   const [selectedBloodGroup, setSelectedBloodGroup] = useState("All")
   const [selectedDistance, setSelectedDistance] = useState("20")
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | null>(null)
   const [bloodFilter, setBloodFilter] = useState("All")
   const [maxDistance, setMaxDistance] = useState(20)
   const [selectedRadius, setSelectedRadius] = useState("20")
@@ -74,7 +73,7 @@ export function NearbyDonorFinder() {
     return R * c
   }
 
-  
+  // Get user location on component mount
   useEffect(() => {
     let mounted = true
     
@@ -103,28 +102,39 @@ export function NearbyDonorFinder() {
     }
   }, [])
 
+  // Fetch donors when location is available
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
         setLoading(true)
         setError(null)
-        const donorRes = await fetch("/api/donors", { cache: "no-store" })
+        
+        if (!userLocation) {
+          setNearbyDonors([])
+          return
+        }
+
+        const params = new URLSearchParams({
+          lat: userLocation.lat.toString(),
+          lng: userLocation.lng.toString(),
+          radius: selectedDistance,
+          ...(selectedBloodGroup !== "All" && { blood_group: selectedBloodGroup }),
+        })
+
+        const donorRes = await fetch(`/api/donors/nearby?${params}`, { cache: "no-store" })
         
         if (!donorRes.ok) throw new Error(`Donors HTTP ${donorRes.status}`)
 
         const donorData = await donorRes.json()
 
-        const normalized: NearbyDonor[] = (Array.isArray(donorData) ? donorData : []).map((row: any) => {
+        const normalized: NearbyDonor[] = (Array.isArray(donorData.data) ? donorData.data : []).map((row: any) => {
           return {
             id: Number(row.id),
             name: row.name ?? `User ${row.user_id}`,
             bloodGroup: row.blood_group,
             city: row.location,
-            distance:
-              row.lat != null && row.lng != null && userLocation
-                ? haversineKm(userLocation.lat, userLocation.lng, Number(row.lat), Number(row.lng))
-                : 1,
+            distance: row.distance || 1,
             phone: row.phone,
             email: row.email ?? "",
             available: Boolean(row.availability),
@@ -143,7 +153,7 @@ export function NearbyDonorFinder() {
     return () => {
       mounted = false
     }
-  }, [userLocation])
+  }, [userLocation, selectedBloodGroup, selectedDistance])
 
   useEffect(() => {
     if (!userLocation) return
@@ -166,7 +176,7 @@ export function NearbyDonorFinder() {
         return matchesBlood && matchesDistance
       })
       .sort((a, b) => a.distance - b.distance)
-  }, [bloodFilter, maxDistance])
+  }, [nearbyDonors, bloodFilter, maxDistance])
 
   function handleRadiusChange(value: string) {
     setSelectedRadius(value)
