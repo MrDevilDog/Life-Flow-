@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -28,6 +29,7 @@ const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
 
 export function DonorProfile() {
   const { user, token } = useAuth()
+  const router = useRouter()
   const [donor, setDonor] = useState<DonorRow | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -100,26 +102,31 @@ export function DonorProfile() {
   const isProfileComplete = 
     donor &&
     donor.blood_group &&
-    donor.blood_group !== "N/A" &&
     donor.location &&
-    donor.location !== "N/A" &&
-    donor.phone &&
-    donor.phone !== "N/A";
+    donor.phone;
+  
+  console.log("Profile completeness check:", {
+    donor: !!donor,
+    blood_group: !!donor?.blood_group,
+    location: !!donor?.location,
+    phone: !!donor?.phone,
+    isComplete: !!(donor && donor.blood_group && donor.location && donor.phone)
+  });
   
   const availability = donor ? Boolean(donor.availability) : false
-  const bloodGroup = donor?.blood_group ?? "N/A"
-  const location = donor?.location ?? "N/A"
-  const phone = donor?.phone ?? "N/A"
-  const email = donor?.email ?? "N/A"
+  const bloodGroup = donor?.blood_group || "Not specified"
+  const location = donor?.location || "Not specified"
+  const phone = donor?.phone || "Not specified"
+  const email = donor?.email || "Not specified"
   
   const memberSince = donor?.created_at ? 
     new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(donor.created_at)) 
     : "N/A"
 
   const handleEditClick = () => {
-    setEditPhone(phone === "N/A" ? "" : phone)
-    setEditLocation(location === "N/A" ? "" : location)
-    setEditBloodGroup(bloodGroup === "N/A" ? "" : bloodGroup)
+    setEditPhone(phone === "Not specified" ? "" : phone)
+    setEditLocation(location === "Not specified" ? "" : location)
+    setEditBloodGroup(bloodGroup === "Not specified" ? "" : bloodGroup)
     setEditAvailability(availability)
     setShowEditModal(true)
   }
@@ -156,8 +163,20 @@ export function DonorProfile() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to update profile")
 
-      // Refresh donor state
+      console.log("Profile update response:", data)
+      
+      // Update local state immediately with returned data
+      if (data?.data) {
+        setDonor(data.data)
+        console.log("Updated local donor state:", data.data)
+      }
+      
+      // Also refresh auth context if needed
       if (t) await refreshMe(t)
+      
+      // Refresh the page to ensure dashboard updates
+      router.refresh()
+      
       setShowEditModal(false)
     } catch (err) {
       console.error("Profile update error:", err)

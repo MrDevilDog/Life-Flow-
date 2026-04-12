@@ -170,9 +170,50 @@ export async function PUT(req: Request) {
       }
     }
 
+    // Fetch and return updated user data
+    const updatedUserRows = await db.query<any[]>(
+      `SELECT u.id, u.name, u.email, u.phone, u.email_verified, u.phone_verified, u.verification_type, u.created_at,
+              d.blood_group, d.location, d.availability, d.lat, d.lng
+       FROM users u
+       LEFT JOIN donors d ON u.id = d.user_id
+       WHERE u.id = ? LIMIT 1`,
+      [authUser.id]
+    );
+
+    if (updatedUserRows.length === 0) {
+      return jsonError(404, "User not found after update");
+    }
+
+    const updatedUser = updatedUserRows[0];
+    console.log("Updated user data:", {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      phone: updatedUser.phone ? `${updatedUser.phone.substring(0, 3)}***` : null,
+      blood_group: updatedUser.blood_group,
+      location: updatedUser.location,
+      availability: updatedUser.availability
+    });
+
     return NextResponse.json({
       success: true,
-      message: "Profile updated successfully"
+      message: "Profile updated successfully",
+      data: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        email_verified: updatedUser.email_verified,
+        phone_verified: updatedUser.phone_verified,
+        verification_type: updatedUser.verification_type,
+        created_at: updatedUser.created_at,
+        donor_profile: updatedUser.blood_group ? {
+          blood_group: updatedUser.blood_group,
+          location: updatedUser.location,
+          availability: updatedUser.availability,
+          lat: updatedUser.lat,
+          lng: updatedUser.lng
+        } : null
+      }
     });
 
   } catch (err: unknown) {
