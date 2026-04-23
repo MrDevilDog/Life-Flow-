@@ -40,8 +40,10 @@ export async function POST(req: Request) {
       password,
       phone,
       blood_group,
-      location,
+      city,
     } = parsed;
+
+    const location = city || (parsed as any).location;
 
     // 1. Check if user exists by email
     const existingUser = await db.query<any[]>(
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
     
     // Always create donor record with geocoded coordinates
     const donorBloodGroup = blood_group || 'O+';
-    const donorLocation = location || 'Unknown';
+    const donorLocation = typeof location === 'string' ? location : 'Unknown';
     
     // Get coordinates for the location
     let donorLat = 0;

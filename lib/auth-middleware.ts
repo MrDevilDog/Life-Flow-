@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, requireAuthUser, AuthUser } from './auth';
+import { getAuthUser, requireAuthUser, AuthUser } from '@/services/auth';
 
 // Public routes that don't require authentication
 export const PUBLIC_ROUTES = [
